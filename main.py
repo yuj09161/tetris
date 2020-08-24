@@ -15,7 +15,7 @@ SHAPE=(((0,1,1),(1,1,0)),((1,1),(1,1)),((1,1,1,1),),((0,1,0),(1,1,1)))
 
 #Define global settings
 SIZE=(600,600)
-FPS=60
+FPS=3
 BLOCK_SIZE=36
 
 #direction flags
@@ -65,7 +65,6 @@ class Block(pygame.sprite.Sprite):
                 spd[0]=0
             self.__pos[1]+=spd[1]
             self.rect.move_ip(*spd)
-            print(self.__pos,spd,self.rect)
         if size:
             assert type(size) is list or type(size) is tuple, f'type error: type of size {type(size)}'
             assert len(pos)==2, 'length error'
@@ -104,12 +103,12 @@ class Main:
             self.__event_handler()
             self.__display_handler()
             pygame.display.flip()
-            self.__get_colision()
+            self.__get_crash()
+            self.__del_line()
             clocker.tick(FPS)
         self.__quit()
     
     def __next_block(self):
-        print('next')
         block=SHAPE[random.randint(0,len(SHAPE)-1)]
         color=random.choice((RED,GREEN,BLUE,GRAY))
         for k in range(len(block)):
@@ -117,7 +116,8 @@ class Main:
                 if block[k][j]:
                     self.__block_g.append(Block([(j+(9-len(block[0]))//2)*BLOCK_SIZE+30,k*BLOCK_SIZE+30],color))
     
-    def __get_colision(self):
+    def __get_crash(self):
+        #get collision
         y=[]
         for block in self.__block_g:
             pos_b=block.get_pos()
@@ -133,11 +133,28 @@ class Main:
             self.__fixed_g+=self.__block_g
             self.__block_g=[]
             self.__next_block()
-        print(self.__block_g,self.__fixed_g)
-        
-        rows=[None]*15
+    
+    def __del_line(self):
+        rows=[0]*15
+        poss={}
+        print(poss)
+        k=0
         for block in self.__fixed_g:
-            pass
+            pos=block.get_pos()
+            row=int((pos[1]-30)/BLOCK_SIZE)
+            column=int((pos[0]-30)/BLOCK_SIZE)
+            rows[row]|=2**column
+            poss[(row,column)]=k
+            k+=1
+        print(rows,poss)
+        k=0
+        for row in rows:
+            if row==511:
+                d=0
+                for j in range(9):
+                    del(self.__fixed_g[poss[(k,j)]-d])
+                    d+=1
+            k+=1
     
     def __get_direction(self):
         flag=0
@@ -178,31 +195,27 @@ class Main:
                 self.__running=False
             elif event_type==pygame.KEYDOWN:
                 RESET_XSPEED=False
-                print(event.key)
                 if event.key==274: #down
-                    print('down')
                     self.__y_multi=2
                 else:
                     self.__y_multi=1
                 if event.key==275: #right
-                    print('right')
                     self.__x_spd=BLOCK_SIZE
                     for block in self.__block_g:
                         x,_=block.get_pos()
                         direction=self.__get_direction()
-                        if self.__frame_count==11:
+                        if self.__frame_count==1:
                             if x>=318 or direction&(SE):
                                 self.__x_spd=0
                         else:
                             if x>=318 or direction&(E):
                                 self.__x_spd=0
                 elif event.key==276: #left
-                    print('left')
                     self.__x_spd=-BLOCK_SIZE
                     for block in self.__block_g:
                         x,_=block.get_pos()
                         direction=self.__get_direction()
-                        if self.__frame_count==11:
+                        if self.__frame_count==1:
                             if x<=30 or direction&(SW):
                                 self.__x_spd=0
                         else:
@@ -216,7 +229,7 @@ class Main:
     def __display_handler(self):
         display.fill(WHITE)
         pygame.draw.rect(display,BLACK,pygame.Rect(30,30,BLOCK_SIZE*9,BLOCK_SIZE*15))
-        if self.__frame_count==11:
+        if self.__frame_count==1:
             self.__frame_count=0
             for block in self.__block_g:
                 block.update(spd=[self.__x_spd,BLOCK_SIZE*self.__y_multi])
@@ -224,7 +237,6 @@ class Main:
             for block in self.__block_g:
                 block.update(spd=[self.__x_spd,0])
         self.__frame_count+=1
-        print('#####')
         for block in self.__fixed_g:
             block.update()
     

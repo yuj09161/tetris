@@ -15,8 +15,18 @@ SHAPE=(((0,1,1),(1,1,0)),((1,1),(1,1)),((1,1,1,1),),((0,1,0),(1,1,1)))
 
 #Define global settings
 SIZE=(600,600)
-FPS=5
+FPS=60
 BLOCK_SIZE=36
+
+#direction flags
+N  = 0b00000001
+NE = 0b00000010
+E  = 0b00000100
+SE = 0b00001000
+S  = 0b00010000
+SW = 0b00100000
+W  = 0b01000000
+NW = 0b10000000
 
 
 #Define global variables
@@ -84,6 +94,7 @@ class Main:
         self.__y_multi=1
         self.__block_g=[]
         self.__fixed_g=[]
+        self.__frame_count=0
         
         self.__run()
     
@@ -92,8 +103,8 @@ class Main:
         while self.__running:
             self.__event_handler()
             self.__display_handler()
-            self.__get_colision()
             pygame.display.flip()
+            self.__get_colision()
             clocker.tick(FPS)
         self.__quit()
     
@@ -112,8 +123,7 @@ class Main:
             pos_b=block.get_pos()
             for f_block in self.__fixed_g:
                 pos_f=f_block.get_pos()
-                if (pos_b[0]==pos_f[0] and -BLOCK_SIZE<=pos_b[1]-pos_f[1]<=BLOCK_SIZE or
-                    pos_b[1]==pos_f[1] and -BLOCK_SIZE<=pos_b[0]-pos_f[0]<=BLOCK_SIZE):
+                if pos_b[0]==pos_f[0] and pos_f[1]-pos_b[1]==BLOCK_SIZE:
                     self.__fixed_g+=self.__block_g
                     self.__block_g=[]
                     self.__next_block()
@@ -123,6 +133,42 @@ class Main:
             self.__fixed_g+=self.__block_g
             self.__block_g=[]
             self.__next_block()
+        print(self.__block_g,self.__fixed_g)
+        
+        rows=[None]*15
+        for block in self.__fixed_g:
+            pass
+    
+    def __get_direction(self):
+        flag=0
+        for block in self.__block_g:
+            pos_b=block.get_pos()
+            for f_block in self.__fixed_g:
+                pos_f=f_block.get_pos()
+                diff_x=pos_b[0]-pos_f[0]
+                diff_y=pos_b[1]-pos_f[1]
+                if not diff_x:
+                    if diff_y>0:
+                        flag|=N
+                    else:
+                        flag|=S
+                elif not diff_y:
+                    if diff_x>0:
+                        flag|=W
+                    else:
+                        flag|=E
+                elif diff_x==diff_y==BLOCK_SIZE:
+                    if diff_x>0:
+                        if diff_y>0:
+                            flag|=NW
+                        else:
+                            flag|=SW
+                    else:
+                        if diff_y>0:
+                            flag|=NE
+                        else:
+                            flag|=SE
+        return flag
     
     def __event_handler(self):
         RESET_XSPEED=True
@@ -142,16 +188,26 @@ class Main:
                     print('right')
                     self.__x_spd=BLOCK_SIZE
                     for block in self.__block_g:
-                        x,y=block.get_pos()
-                        if x>=318 or :
-                            self.__x_spd=0
+                        x,_=block.get_pos()
+                        direction=self.__get_direction()
+                        if self.__frame_count==11:
+                            if x>=318 or direction&(SE):
+                                self.__x_spd=0
+                        else:
+                            if x>=318 or direction&(E):
+                                self.__x_spd=0
                 elif event.key==276: #left
                     print('left')
                     self.__x_spd=-BLOCK_SIZE
                     for block in self.__block_g:
-                        x,y=block.get_pos()
-                        if x<=30:
-                            self.__x_spd=0
+                        x,_=block.get_pos()
+                        direction=self.__get_direction()
+                        if self.__frame_count==11:
+                            if x<=30 or direction&(SW):
+                                self.__x_spd=0
+                        else:
+                            if x<=30 or direction&(W):
+                                self.__x_spd=0
                 else:
                     self.__x_spd=0
         if RESET_XSPEED:
@@ -160,8 +216,14 @@ class Main:
     def __display_handler(self):
         display.fill(WHITE)
         pygame.draw.rect(display,BLACK,pygame.Rect(30,30,BLOCK_SIZE*9,BLOCK_SIZE*15))
-        for block in self.__block_g:
-            block.update(spd=[self.__x_spd,BLOCK_SIZE*self.__y_multi])
+        if self.__frame_count==11:
+            self.__frame_count=0
+            for block in self.__block_g:
+                block.update(spd=[self.__x_spd,BLOCK_SIZE*self.__y_multi])
+        else:
+            for block in self.__block_g:
+                block.update(spd=[self.__x_spd,0])
+        self.__frame_count+=1
         print('#####')
         for block in self.__fixed_g:
             block.update()

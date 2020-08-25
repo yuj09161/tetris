@@ -4,15 +4,18 @@ pygame.font.init()
 
 
 #Define pygame.Colors constant
-RED=pygame.Color(255,0,0)
-GREEN=pygame.Color(0,255,0)
-BLUE=pygame.Color(0,0,255)
-BLACK=pygame.Color(0,0,0)
-GRAY=pygame.Color(128,128,128)
-WHITE=pygame.Color(255,255,255)
+RED     = pygame.Color(255,0,0)
+GREEN   = pygame.Color(0,255,0)
+BLUE    = pygame.Color(0,0,255)
+YELLOW  = pygame.Color(255,255,0)
+CYAN    = pygame.Color(0,255,255)
+MAGENTA = pygame.Color(255,0,255)
+BLACK   = pygame.Color(0,0,0)
+GRAY    = pygame.Color(128,128,128)
+WHITE   = pygame.Color(255,255,255)
 
 #Define constants
-SHAPE=(((0,1,1),(1,1,0)),((1,1),(1,1)),((1,1,1,1),),((1,1,1,1),(0,0,0,1)),((0,1,0),(1,1,1)))
+SHAPE=(((0,1,1),(1,1,0),RED),((1,1),(1,1),GREEN),((1,1,1,1),BLUE),((1,1,1,1),(0,0,0,1),YELLOW),((0,1,0),(1,1,1),CYAN))
 #SHAPE=(((0,1,0),(1,1,1)),)
 TXTFONT=pygame.font.SysFont('NanumBarunGothic',50)
 
@@ -21,7 +24,7 @@ TXTFONT=pygame.font.SysFont('NanumBarunGothic',50)
 SIZE=(600,600)
 FPS=60
 BLOCK_SIZE=36
-SPD=20
+SPD=5
 DOWNSPD=60/SPD
 
 #direction flags
@@ -43,10 +46,6 @@ display=pygame.display.set_mode(SIZE)
 #Block class
 class Block(pygame.sprite.Sprite):
     def __init__(self,pos,color,size=None):
-        assert type(pos) is list, f'type error: type of pos {type(pos)}'
-        assert len(pos)==2, f'length error: length of pos {len(pos)}'
-        assert type(size) is list or type(size) is tuple or type(size)==type(None), f'type error: type of size {type(size)}'
-        assert len(pos)==2, 'length error'
         super().__init__()
         self.__pos=pos
         self.__color=color
@@ -59,22 +58,13 @@ class Block(pygame.sprite.Sprite):
     def update(self,*,pos=None,spd=None,size=None,color=None):
         #get position & update position
         if pos:
-            assert type(pos) is list and len(pos)==2, 'length error'
             self.__pos=pos
             self.rect.move_ip([pos[k]-self.__pos[k] for k in range(2)])
         elif spd:
-            assert type(spd) is list or type(spd) is tuple, f'type error: type of spd {type(spd)}'
-            assert len(spd)==2, f'length of spd:{len(spd)}!=2:length of pos'
             for k in range(2):
                 self.__pos[k]+=spd[k]
-            '''
-            self.__pos[0]+=spd[0]
-            self.__pos[1]+=spd[1]
-            '''
             self.rect.move_ip(*spd)
         if size:
-            assert type(size) is list or type(size) is tuple, f'type error: type of size {type(size)}'
-            assert len(pos)==2, 'length error'
             self.__size=size
             self.rect.w=size[0]
             self.rect.h=size[1]
@@ -102,12 +92,16 @@ class Main:
         self.__y_multi=1
         self.__block_g=[]
         self.__fixed_g=[]
+        self.__next_g=[]
+        self.__point=0
         self.__frame_count=0
         
         self.__run()
     
     def __run(self):
-        self.__next_block()
+        tmp=SHAPE[random.randint(0,len(SHAPE)-1)]
+        self.__next_block=(tmp[:-1],tmp[-1])
+        self.__add_block()
         while self.__running:
             while self.__paused:
                 self.__event_handler_paused()
@@ -129,8 +123,9 @@ class Main:
                 self.__y_multi=1
                 self.__block_g=[]
                 self.__fixed_g=[]
+                self.__next_g=[]
                 self.__frame_count=0
-                self.__next_block()
+                self.__add_block()
             direction=self.__get_touched()
             self.__event_handler(direction)
             self.__draw()
@@ -140,13 +135,21 @@ class Main:
             clocker.tick(FPS)
         self.__quit()
     
-    def __next_block(self):
-        block=SHAPE[random.randint(0,len(SHAPE)-1)]
-        color=random.choice((RED,GREEN,BLUE,GRAY))
+    def __add_block(self):
+        block,color=self.__next_block
         for k in range(len(block)):
             for j in range(len(block[0])):
                 if block[k][j]:
                     self.__block_g.append(Block([(j+(9-len(block[0]))//2)*BLOCK_SIZE+30,k*BLOCK_SIZE+30],color))
+        self.__next_g.clear()
+        tmp=SHAPE[random.randint(0,len(SHAPE)-1)]
+        self.__next_block=(tmp[:-1],tmp[-1])
+        #print(self.__next_block)
+        block,color=self.__next_block
+        for k in range(len(block)):
+            for j in range(len(block[0])):
+                if block[k][j]:
+                    self.__next_g.append(Block([j*BLOCK_SIZE+410,k*BLOCK_SIZE+200],color))
     
     def __get_crash(self,direction):
         #get collision
@@ -158,14 +161,14 @@ class Main:
                 if pos_b[0]==pos_f[0] and pos_f[1]-pos_b[1]==BLOCK_SIZE:
                     self.__fixed_g+=self.__block_g
                     self.__block_g=[]
-                    self.__next_block()
+                    self.__add_block()
                     return
             if pos_b[1]>=14*BLOCK_SIZE+30:
                 reached=True
         if reached:
             self.__fixed_g+=self.__block_g
             self.__block_g=[]
-            self.__next_block()
+            self.__add_block()
     
     def __del_line(self):
         rows=[0]*15
@@ -175,19 +178,20 @@ class Main:
             if pos[1]<=BLOCK_SIZE+30:
                 self.__overed=True
                 return
-            row=int((pos[1]-30)/BLOCK_SIZE)
-            column=int((pos[0]-30)/BLOCK_SIZE)
-            rows[row]|=2**column
+            #         row                              column
+            rows[int((pos[1]-30)/BLOCK_SIZE)]|=2**int((pos[0]-30)/BLOCK_SIZE)
             k+=1
         k=0
         for row in rows:
             if row==511:
+                print(k)
                 for j in range(len(self.__fixed_g)-1,-1,-1):
                     if (self.__fixed_g[j].get_pos()[1]-30)/BLOCK_SIZE==k:
                         del(self.__fixed_g[j])
                 for block in self.__fixed_g:
                     if (block.get_pos()[1]-30)/BLOCK_SIZE<k:
                         block.update(spd=[0,BLOCK_SIZE])
+                self.__point+=10
             k+=1
     
     def __get_touched(self):
@@ -205,16 +209,12 @@ class Main:
                 diff_x=pos_b[0]-pos_f[0]
                 diff_y=pos_b[1]-pos_f[1]
                 if not diff_x:
-                    if diff_y<0:
+                    if diff_y==-BLOCK_SIZE:
                         flag|=S
-                    '''
-                    else:
-                        flag|=N
-                    '''
                 elif not diff_y:
-                    if diff_x>0:
+                    if diff_x==BLOCK_SIZE:
                         flag|=W
-                    else:
+                    elif diff_x==-BLOCK_SIZE:
                         flag|=E
                 elif diff_x==diff_y==BLOCK_SIZE:
                     if diff_y<0:
@@ -222,36 +222,28 @@ class Main:
                             flag|=SW
                         else:
                             flag|=SE
-                    '''
-                    else:
-                        if diff_x>0:
-                            flag|=NW
-                        else:
-                            flag|=NE
-                    '''
         return flag
-    
+    '''
     def __get_double_down(self):
         flag=0
         for block in self.__block_g:
             pos_b=block.get_pos()
-            if pos_b[1]>=13*BLOCK_SIZE+30:
+            if pos_b[1]>=12*BLOCK_SIZE+30:
                 flag|=S
             for f_block in self.__fixed_g:
                 pos_f=f_block.get_pos()
                 diff_x=pos_b[0]-pos_f[0]
                 diff_y=pos_b[1]-pos_f[1]
                 if not diff_x:
-                    if diff_y<0:
+                    if diff_y==BLOCK_SIZE*2:
                         flag|=S
-                elif diff_x==BLOCK_SIZE and diff_y==BLOCK_SIZE*2:
-                    if diff_y<0:
-                        if diff_x>0:
-                            flag|=SW
-                        else:
-                            flag|=SE
+                elif diff_y==BLOCK_SIZE*2:
+                    if diff_x==BLOCK_SIZE:
+                        flag|=SW
+                    elif diff_x==-BLOCK_SIZE:
+                        flag|=SE
         return flag
-    
+    '''
     def __event_handler(self,direction):
         key_unprocessed=True
         for event in pygame.event.get():
@@ -260,27 +252,29 @@ class Main:
                 self.__running=False
             elif event_type==pygame.KEYDOWN and key_unprocessed:
                 key_unprocessed=False
+                '''
                 if event.key==274: #down
                     if not self.__get_double_down()&S:
                         self.__y_multi=2
                 else:
-                    self.__y_multi=1
-                    if event.key==275: #right
-                        self.__x_spd=BLOCK_SIZE
-                        for block in self.__block_g:
-                            x,_=block.get_pos()
-                            if direction&E or (self.__frame_count==DOWNSPD and direction&SE):
-                                self.__x_spd=0
-                    elif event.key==276: #left
-                        self.__x_spd=-BLOCK_SIZE
-                        for block in self.__block_g:
-                            x,_=block.get_pos()
-                            if direction&W or (self.__frame_count==DOWNSPD and direction&SW):
-                                self.__x_spd=0
-                    else:
-                        self.__x_spd=0
-                        if event.key==32: #space
-                            self.__paused=True
+                '''
+                self.__y_multi=1
+                if event.key==275: #right
+                    self.__x_spd=BLOCK_SIZE
+                    for block in self.__block_g:
+                        x,_=block.get_pos()
+                        if direction&E or (self.__frame_count==DOWNSPD and direction&SE):
+                            self.__x_spd=0
+                elif event.key==276: #left
+                    self.__x_spd=-BLOCK_SIZE
+                    for block in self.__block_g:
+                        x,_=block.get_pos()
+                        if direction&W or (self.__frame_count==DOWNSPD and direction&SW):
+                            self.__x_spd=0
+                else:
+                    self.__x_spd=0
+                    if event.key==32: #space
+                        self.__paused=True
         if key_unprocessed:
             self.__x_spd=0
             if self.__frame_count==0:
@@ -299,12 +293,14 @@ class Main:
             if event.type==pygame.QUIT:
                 self.__running=False
                 self.__overed=False
-            elif event.type==pygame.KEYDOWN:
+            elif event.type==pygame.KEYDOWN and 273>event.key<276:
                 self.__overed=False
     
     def __draw(self):
         display.fill(WHITE)
         pygame.draw.rect(display,BLACK,pygame.Rect(30,30,BLOCK_SIZE*9,BLOCK_SIZE*15))
+        pygame.draw.rect(display,BLACK,pygame.Rect(410,200,BLOCK_SIZE*4,BLOCK_SIZE*3))
+        display.blit(TXTFONT.render(f'{self.__point:03d}',True,BLACK),(450,100))
         if self.__frame_count==DOWNSPD:
             for block in self.__block_g:
                 block.update(spd=[self.__x_spd,BLOCK_SIZE*self.__y_multi])
@@ -315,11 +311,13 @@ class Main:
             self.__frame_count+=1
         for block in self.__fixed_g:
             block.update()
+        for block in self.__next_g:
+            block.update()
     
     def __draw_over(self):
         display.fill(WHITE)
         display.blit(TXTFONT.render('Game Over',True,BLACK),((SIZE[0]-200)//2,(SIZE[1]-100)//2))
-        display.blit(TXTFONT.render('Press any Key to Restart',True,BLACK),((SIZE[0]-400)//2,(SIZE[1]+50)//2))
+        display.blit(TXTFONT.render('Press A Key to Restart',True,BLACK),((SIZE[0]-400)//2,(SIZE[1]+50)//2))
     
     def __quit(self):
         pygame.display.quit()

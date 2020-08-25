@@ -147,24 +147,27 @@ class Main:
     
     def __del_line(self):
         rows=[0]*15
-        poss={}
         k=0
         for block in self.__fixed_g:
             pos=block.get_pos()
             row=int((pos[1]-30)/BLOCK_SIZE)
             column=int((pos[0]-30)/BLOCK_SIZE)
-            rows[row]|=2**column
-            poss[(row,column)]=k
+            try:
+                rows[row]|=2**column
+            except IndexError as e:
+                print(row,'/',rows,'\n',e)
             k+=1
         k=0
         for row in rows:
             if row==511:
-                for j in range(9):
-                    del(self.__fixed_g[poss[(k,j)]-j])
+                for j in range(len(self.__fixed_g)-1,-1,-1):
+                    if (self.__fixed_g[j].get_pos()[1]-30)/BLOCK_SIZE==k:
+                        del(self.__fixed_g[j])
                 for block in self.__fixed_g:
                     if (block.get_pos()[1]-30)/BLOCK_SIZE<k:
                         block.update(spd=[0,BLOCK_SIZE])
             k+=1
+        print(rows)
     
     def __get_direction(self):
         flag=0

@@ -1,5 +1,6 @@
 import pygame,random
 import sys,time
+pygame.font.init()
 
 
 #Define pygame.Colors constant
@@ -11,15 +12,16 @@ GRAY=pygame.Color(128,128,128)
 WHITE=pygame.Color(255,255,255)
 
 #Define constants
-SHAPE=(((0,1,1),(1,1,0)),((1,1),(1,1)),((1,1,1,1),),((0,1,0),(1,1,1)))
-SHAPE=(((0,1,0),(1,1,1)),)
+SHAPE=(((0,1,1),(1,1,0)),((1,1),(1,1)),((1,1,1,1),),((1,1,1,1),(0,0,0,1)),((0,1,0),(1,1,1)))
+#SHAPE=(((0,1,0),(1,1,1)),)
+TXTFONT=pygame.font.SysFont('NanumBarunGothic',50)
 
 
 #Define global settings
 SIZE=(600,600)
 FPS=60
 BLOCK_SIZE=36
-SPD=3
+SPD=20
 DOWNSPD=60/SPD
 
 #direction flags
@@ -93,7 +95,8 @@ class Block(pygame.sprite.Sprite):
 class Main:
     def __init__(self):
         self.__running=True
-        self.__pause=False
+        self.__paused=False
+        self.__overed=False
         
         self.__x_spd=0
         self.__y_multi=1
@@ -106,12 +109,31 @@ class Main:
     def __run(self):
         self.__next_block()
         while self.__running:
-            while self.__pause:
+            while self.__paused:
                 self.__event_handler_paused()
                 clocker.tick(FPS)
-            direction=self.__get_direction()
+            if not self.__running:
+                self.__quit()
+                return
+            if self.__overed:
+                self.__draw_over()
+                pygame.display.flip()
+                while self.__overed:
+                    self.__event_handler_overed()
+                    clocker.tick(FPS)
+                if not self.__running:
+                    self.__quit()
+                    return
+                #reset
+                self.__x_spd=0
+                self.__y_multi=1
+                self.__block_g=[]
+                self.__fixed_g=[]
+                self.__frame_count=0
+                self.__next_block()
+            direction=self.__get_touched()
             self.__event_handler(direction)
-            self.__display_handler()
+            self.__draw()
             pygame.display.flip()
             self.__get_crash(direction)
             self.__del_line()
@@ -138,7 +160,7 @@ class Main:
                     self.__block_g=[]
                     self.__next_block()
                     return
-            if pos_b[1]>=534:
+            if pos_b[1]>=14*BLOCK_SIZE+30:
                 reached=True
         if reached:
             self.__fixed_g+=self.__block_g
@@ -150,12 +172,12 @@ class Main:
         k=0
         for block in self.__fixed_g:
             pos=block.get_pos()
+            if pos[1]<=BLOCK_SIZE+30:
+                self.__overed=True
+                return
             row=int((pos[1]-30)/BLOCK_SIZE)
             column=int((pos[0]-30)/BLOCK_SIZE)
-            try:
-                rows[row]|=2**column
-            except IndexError as e:
-                print(row,'/',rows,'\n',e)
+            rows[row]|=2**column
             k+=1
         k=0
         for row in rows:
@@ -167,9 +189,8 @@ class Main:
                     if (block.get_pos()[1]-30)/BLOCK_SIZE<k:
                         block.update(spd=[0,BLOCK_SIZE])
             k+=1
-        print(rows)
     
-    def __get_direction(self):
+    def __get_touched(self):
         flag=0
         for block in self.__block_g:
             pos_b=block.get_pos()
@@ -210,7 +231,7 @@ class Main:
                     '''
         return flag
     
-    def __get_blocks_ddown(self):
+    def __get_double_down(self):
         flag=0
         for block in self.__block_g:
             pos_b=block.get_pos()
@@ -240,7 +261,7 @@ class Main:
             elif event_type==pygame.KEYDOWN and key_unprocessed:
                 key_unprocessed=False
                 if event.key==274: #down
-                    if not self.__get_blocks_ddown()&S:
+                    if not self.__get_double_down()&S:
                         self.__y_multi=2
                 else:
                     self.__y_multi=1
@@ -259,7 +280,7 @@ class Main:
                     else:
                         self.__x_spd=0
                         if event.key==32: #space
-                            self.__pause=True
+                            self.__paused=True
         if key_unprocessed:
             self.__x_spd=0
             if self.__frame_count==0:
@@ -267,22 +288,38 @@ class Main:
     
     def __event_handler_paused(self):
         for event in pygame.event.get():
-            if event.type==pygame.KEYDOWN and event.key==32: #space
-                self.__pause=False
+            if event.type==pygame.QUIT:
+                self.__running=False
+                self.__paused=False
+            elif event.type==pygame.KEYDOWN and event.key==32: #space
+                self.__paused=False
     
-    def __display_handler(self):
+    def __event_handler_overed(self):
+        for event in pygame.event.get():
+            if event.type==pygame.QUIT:
+                self.__running=False
+                self.__overed=False
+            elif event.type==pygame.KEYDOWN:
+                self.__overed=False
+    
+    def __draw(self):
         display.fill(WHITE)
         pygame.draw.rect(display,BLACK,pygame.Rect(30,30,BLOCK_SIZE*9,BLOCK_SIZE*15))
         if self.__frame_count==DOWNSPD:
-            self.__frame_count=-1
             for block in self.__block_g:
                 block.update(spd=[self.__x_spd,BLOCK_SIZE*self.__y_multi])
+            self.__frame_count=0
         else:
             for block in self.__block_g:
                 block.update(spd=[self.__x_spd,0])
-        self.__frame_count+=1
+            self.__frame_count+=1
         for block in self.__fixed_g:
             block.update()
+    
+    def __draw_over(self):
+        display.fill(WHITE)
+        display.blit(TXTFONT.render('Game Over',True,BLACK),((SIZE[0]-200)//2,(SIZE[1]-100)//2))
+        display.blit(TXTFONT.render('Press any Key to Restart',True,BLACK),((SIZE[0]-400)//2,(SIZE[1]+50)//2))
     
     def __quit(self):
         pygame.display.quit()

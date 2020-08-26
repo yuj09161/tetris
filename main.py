@@ -71,7 +71,14 @@ class Main:
         self.__running=True
         self.__paused=False
         self.__overed=False
-
+        
+        tmp=SHAPE[random.randint(0,len(SHAPE)-1)]
+        self.__next_block=(tmp[:-1],tmp[-1])
+        
+        self.__reset()
+        self.__run()
+    
+    def __reset(self):
         self.__x_spd=0
         self.__block_g=[]
         self.__fixed_g=[]
@@ -79,13 +86,9 @@ class Main:
         self.__point=0
         self.__frame_count=0
         self.__spd_multi=1
-
-        self.__run()
+        self.__add_block()
     
     def __run(self):
-        tmp=SHAPE[random.randint(0,len(SHAPE)-1)]
-        self.__next_block=(tmp[:-1],tmp[-1])
-        self.__add_block()
         while self.__running:
             while self.__paused:
                 self.__event_handler_paused()
@@ -102,15 +105,7 @@ class Main:
                 if not self.__running:
                     self.__quit()
                     return
-                #reset
-                self.__x_spd=0
-                self.__block_g=[]
-                self.__fixed_g=[]
-                self.__next_g=[]
-                self.__point=0
-                self.__frame_count=0
-                self.__spd_multi=1
-                self.__add_block()
+                self.__reset()
             direction=self.__get_touched()
             self.__event_handler(direction)
             self.__draw()
@@ -273,16 +268,17 @@ class Main:
             if event_type==pygame.QUIT:
                 self.__running=False
             elif event_type==pygame.KEYDOWN:
+                #print(event.key)
                 if key_unprocessed:
                     key_unprocessed=False
-                    if event.key==275: #right
+                    if event.key==pygame.K_RIGHT: #right
                         self.__x_spd=1
                         for block in self.__block_g:
                             if direction&E:
                                 self.__x_spd=0
                             elif self.__frame_count==DOWNSPD//self.__spd_multi and direction&SE:
                                 self.__x_spd=0
-                    elif event.key==276: #left
+                    elif event.key==pygame.K_LEFT: #left
                         self.__x_spd=-1
                         for block in self.__block_g:
                             if direction&W:
@@ -291,17 +287,18 @@ class Main:
                                 self.__x_spd=0
                     else:
                         self.__x_spd=0
-                        if event.key==32: #space
+                        if event.key==pygame.K_SPACE: #space
                             self.__paused=True
-                        elif event.key==114:
+                        elif event.key==pygame.K_r:
                             self.__rotate()
-        if pygame.key.get_pressed()[274]:
+                        elif event.key==pygame.K_q:
+                            self.__reset()
+        if pygame.key.get_pressed()[pygame.K_DOWN]:
             self.__spd_multi=SPDMULTI
-            print('set')
-            print(self.__spd_multi,DOWNSPD,DOWNSPD//self.__spd_multi)
+        elif pygame.key.get_pressed()[pygame.K_b]:
+            self.__spd_multi=SPDMULTI*2
         else:
             self.__spd_multi=1
-            print('unset')
         if key_unprocessed:
             self.__x_spd=0
     
@@ -342,7 +339,7 @@ class Main:
     def __draw_over(self):
         display.fill(COLOR['white'])
         display.blit(TXTFONT.render('Game Over',True,COLOR['black']),((SIZE[0]-200)//2,(SIZE[1]-100)//2))
-        display.blit(TXTFONT.render('Press A Key to Restart',True,COLOR['black']),((SIZE[0]-400)//2,(SIZE[1]+50)//2))
+        display.blit(TXTFONT.render('Press A Key to Restart',True,COLOR['black']),((SIZE[0]-375)//2,(SIZE[1]+50)//2))
     
     def __quit(self):
         pygame.display.quit()

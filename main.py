@@ -11,6 +11,7 @@ SIZE=config['size']
 FPS=config['fps']
 BLOCK_SIZE=config['blocksize']
 DOWNSPD=60/config['spdfersec']
+SPDMULTI=config['spdmulti']
 PADDING=config['padding']
 
 #direction flags
@@ -72,12 +73,12 @@ class Main:
         self.__overed=False
 
         self.__x_spd=0
-        self.__y_multi=1
         self.__block_g=[]
         self.__fixed_g=[]
         self.__next_g=[]
         self.__point=0
         self.__frame_count=0
+        self.__spd_multi=1
 
         self.__run()
     
@@ -103,12 +104,12 @@ class Main:
                     return
                 #reset
                 self.__x_spd=0
-                self.__y_multi=1
                 self.__block_g=[]
                 self.__fixed_g=[]
                 self.__next_g=[]
                 self.__point=0
                 self.__frame_count=0
+                self.__spd_multi=1
                 self.__add_block()
             direction=self.__get_touched()
             self.__event_handler(direction)
@@ -271,37 +272,38 @@ class Main:
             event_type=event.type
             if event_type==pygame.QUIT:
                 self.__running=False
-            elif event_type==pygame.KEYDOWN and key_unprocessed:
-                key_unprocessed=False
-                '''
-                if event.key==274: #down
-                    if not self.__get_double_down()&S:
-                        self.__y_multi=2
-                else:
-                '''
-                self.__y_multi=1
-                if event.key==275: #right
-                    self.__x_spd=1
-                    for block in self.__block_g:
-                        if direction&E:
-                            self.__x_spd=0
-                        elif self.__frame_count==DOWNSPD and direction&SE:
-                            self.__x_spd=0
-                elif event.key==276: #left
-                    self.__x_spd=-1
-                    for block in self.__block_g:
-                        if direction&W or (self.__frame_count==DOWNSPD and direction&SW):
-                            self.__x_spd=0
-                else:
-                    self.__x_spd=0
-                    if event.key==32: #space
-                        self.__paused=True
-                    elif event.key==114:
-                        self.__rotate()
+            elif event_type==pygame.KEYDOWN:
+                if key_unprocessed:
+                    key_unprocessed=False
+                    if event.key==275: #right
+                        self.__x_spd=1
+                        for block in self.__block_g:
+                            if direction&E:
+                                self.__x_spd=0
+                            elif self.__frame_count==DOWNSPD//self.__spd_multi and direction&SE:
+                                self.__x_spd=0
+                    elif event.key==276: #left
+                        self.__x_spd=-1
+                        for block in self.__block_g:
+                            if direction&W:
+                                self.__x_spd=0
+                            elif self.__frame_count==DOWNSPD//self.__spd_multi and direction&SW:
+                                self.__x_spd=0
+                    else:
+                        self.__x_spd=0
+                        if event.key==32: #space
+                            self.__paused=True
+                        elif event.key==114:
+                            self.__rotate()
+        if pygame.key.get_pressed()[274]:
+            self.__spd_multi=SPDMULTI
+            print('set')
+            print(self.__spd_multi,DOWNSPD,DOWNSPD//self.__spd_multi)
+        else:
+            self.__spd_multi=1
+            print('unset')
         if key_unprocessed:
             self.__x_spd=0
-            if self.__frame_count==0:
-                self.__y_multi=1
     
     def __event_handler_paused(self):
         for event in pygame.event.get():
@@ -324,9 +326,9 @@ class Main:
         pygame.draw.rect(display,COLOR['black'],pygame.Rect(PADDING,PADDING,9*BLOCK_SIZE,15*BLOCK_SIZE))
         pygame.draw.rect(display,COLOR['black'],pygame.Rect(410,200,4*BLOCK_SIZE,3*BLOCK_SIZE))
         display.blit(TXTFONT.render(f'{self.__point:03d}',True,COLOR['black']),(450,100))
-        if self.__frame_count==DOWNSPD:
+        if self.__frame_count>=DOWNSPD//self.__spd_multi:
             for block in self.__block_g:
-                block.update(spd=[self.__x_spd,self.__y_multi])
+                block.update(spd=[self.__x_spd,1])
             self.__frame_count=0
         else:
             for block in self.__block_g:

@@ -16,14 +16,16 @@ SPDMULTI=config['spdmulti']
 PADDING=config['padding']
 
 #direction flags
-N  = 0b00000001
-NE = 0b00000010
-E  = 0b00000100
-SE = 0b00001000
-S  = 0b00010000
-SW = 0b00100000
-W  = 0b01000000
-NW = 0b10000000
+#   2^:876543210
+N  = 0b000000001
+NE = 0b000000010
+E  = 0b000000100
+SE = 0b000001000
+S  = 0b000010000
+SW = 0b000100000
+W  = 0b001000000
+NW = 0b010000000
+C  = 0b100000000
 
 
 #Define global variables
@@ -151,17 +153,18 @@ class Main:
         for block in (pos if pos else self.__block_g):
             if pos:
                 pos_b=block
+                print(pos_b)
             else:
                 pos_b=block.pos()
             #get x border touch
-            if pos_b[1]==TABLE_SIZE[1]-1:
+            if pos_b[1]>=TABLE_SIZE[1]-1:
                 flag|=S
-            elif pos_b[1]==0:
+            elif pos_b[1]<=0:
                 flag|=N
             #get y border touch
-            if pos_b[0]==TABLE_SIZE[0]-1:
+            if pos_b[0]>=TABLE_SIZE[0]-1:
                 flag|=E
-            elif pos_b[0]==0:
+            elif pos_b[0]<=0:
                 flag|=W
             #get block touch
             for f_block in self.__fixed_g:
@@ -191,6 +194,31 @@ class Main:
                             flag|=NE
         return flag
     
+    def __get_covered(self,pos=None):
+        flag=0
+        for block in (pos if pos else self.__block_g):
+            if pos:
+                pos_b=block
+                print(pos_b)
+            else:
+                pos_b=block.pos()
+            #get x border touch
+            if pos_b[1]>TABLE_SIZE[1]-1:
+                flag|=S
+            elif pos_b[1]<0:
+                flag|=N
+            #get y border touch
+            if pos_b[0]>TABLE_SIZE[0]-1:
+                flag|=E
+            elif pos_b[0]<0:
+                flag|=W
+            #get block touch
+            for f_block in self.__fixed_g:
+                pos_f=f_block.pos()
+                if pos_b==pos_f:
+                    flag|=C
+        return flag
+    
     def __rotate(self):
         #get size
         min_x=14
@@ -212,12 +240,19 @@ class Main:
         #calculate position
         pos_x=[]
         pos_y=[]
+        can_move=True
         for block in self.__block_g:
             pos=block.pos()
             x=min_x-min_y+pos[1]           #=(pos[1]-min_y-size[1]-1)+(size[1]+1+min_x)
             y=min_x+min_y-pos[0]+size[0]   #=(min_x-pos[0]-1)        +(size[0]+1+min_y)
-            pos_x.append(x)
-            pos_y.append(y)
+            print(self.__get_touched(((x,y),)))
+            if self.__get_covered(((x,y),)):
+                can_move=False
+                return
+            else:
+                pos_x.append(x)
+                pos_y.append(y)
+        '''
         x_max=max(pos_x)
         print(x_max,TABLE_SIZE[0])
         if x_max>TABLE_SIZE[0]-1:
@@ -225,9 +260,12 @@ class Main:
             x_plus=TABLE_SIZE[0]-x_max-1
         else:
             x_plus=0
-        #move
-        for block,x,y in zip(self.__block_g,pos_x,pos_y):
-            block.move([x+x_plus,y])
+        '''
+        if can_move:
+            #move
+            for block,x,y in zip(self.__block_g,pos_x,pos_y):
+                #block.move([x+x_plus,y])
+                block.move([x,y])
         
     def __del_line(self):
         rows=[0]*TABLE_SIZE[1]

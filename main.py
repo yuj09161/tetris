@@ -110,6 +110,8 @@ class Main:
                     return
                 self.__reset()
             direction=self.__get_touched()
+            if not direction&S:
+                self.__delay=0
             self.__event_handler(direction)
             self.__draw()
             pygame.display.flip()
@@ -119,6 +121,7 @@ class Main:
         self.__quit()
     
     def __add_block(self):
+        self.__frame_count=0
         block,color=self.__next_block
         for k in range(len(block)):
             for j in range(len(block[0])):
@@ -143,16 +146,24 @@ class Main:
             else:
                 self.__delay+=1
     
-    def __get_touched(self):
+    def __get_touched(self,pos=None):
         flag=0
-        for block in self.__block_g:
-            pos_b=block.pos()
-            if pos_b[1]>=TABLE_SIZE[1]-1:
+        for block in (pos if pos else self.__block_g):
+            if pos:
+                pos_b=block
+            else:
+                pos_b=block.pos()
+            #get x border touch
+            if pos_b[1]==TABLE_SIZE[1]-1:
                 flag|=S
+            elif pos_b[1]==0:
+                flag|=N
+            #get y border touch
             if pos_b[0]==TABLE_SIZE[0]-1:
                 flag|=E
             elif pos_b[0]==0:
                 flag|=W
+            #get block touch
             for f_block in self.__fixed_g:
                 pos_f=f_block.pos()
                 diff_x=pos_b[0]-pos_f[0]
@@ -160,17 +171,24 @@ class Main:
                 if not diff_x:
                     if diff_y==-1:
                         flag|=S
+                    elif diff_y==1:
+                        flag|=N
                 elif not diff_y:
-                    if diff_x==1:
-                        flag|=W
-                    elif diff_x==-1:
+                    if diff_x==-1:
                         flag|=E
+                    elif diff_x==1:
+                        flag|=W
                 elif diff_x==diff_y==1:
                     if diff_y<0:
                         if diff_x>0:
                             flag|=SW
                         else:
                             flag|=SE
+                    else:
+                        if diff_x>0:
+                            flag|=NW
+                        else:
+                            flag|=NE
         return flag
     
     def __rotate(self):
@@ -191,22 +209,25 @@ class Main:
             if pos[1]>max_y:
                 max_y=pos[1]
         size=(max_x-min_x,max_y-min_y)
-        #calculate position, get min x
-        min_x2=14
-        min_y2=14
-        position=[]
+        #calculate position
+        pos_x=[]
+        pos_y=[]
         for block in self.__block_g:
             pos=block.pos()
-            x=pos[1]-min_y-size[1]-1
-            y=min_x-pos[0]-1
-            position.append((x,y))
-            if x<min_x2:
-                min_x2=x
-            if y<min_y2:
-                min_y2=y
+            x=min_x-min_y+pos[1]           #=(pos[1]-min_y-size[1]-1)+(size[1]+1+min_x)
+            y=min_x+min_y-pos[0]+size[0]   #=(min_x-pos[0]-1)        +(size[0]+1+min_y)
+            pos_x.append(x)
+            pos_y.append(y)
+        x_max=max(pos_x)
+        print(x_max,TABLE_SIZE[0])
+        if x_max>TABLE_SIZE[0]-1:
+            print(x_max-TABLE_SIZE[0]+1)
+            x_plus=TABLE_SIZE[0]-x_max-1
+        else:
+            x_plus=0
         #move
-        for block,pos in zip(self.__block_g,position):
-            block.move([pos[0]-min_x2+min_x,pos[1]-min_y2+min_y])
+        for block,x,y in zip(self.__block_g,pos_x,pos_y):
+            block.move([x+x_plus,y])
         
     def __del_line(self):
         rows=[0]*TABLE_SIZE[1]

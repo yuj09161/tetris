@@ -34,7 +34,7 @@ display=pygame.display.set_mode(SIZE)
 
 
 #Block class
-class Block(pygame.sprite.Sprite):
+class Block:
     def __init__(self,pos,color,size=None):
         super().__init__()
         self.__pos=pos
@@ -153,7 +153,6 @@ class Main:
         for block in (pos if pos else self.__block_g):
             if pos:
                 pos_b=block
-                print(pos_b)
             else:
                 pos_b=block.pos()
             #get x border touch
@@ -199,7 +198,6 @@ class Main:
         for block in (pos if pos else self.__block_g):
             if pos:
                 pos_b=block
-                print(pos_b)
             else:
                 pos_b=block.pos()
             #get x border touch
@@ -245,22 +243,12 @@ class Main:
             pos=block.pos()
             x=min_x-min_y+pos[1]           #=(pos[1]-min_y-size[1]-1)+(size[1]+1+min_x)
             y=min_x+min_y-pos[0]+size[0]   #=(min_x-pos[0]-1)        +(size[0]+1+min_y)
-            print(self.__get_touched(((x,y),)))
             if self.__get_covered(((x,y),)):
                 can_move=False
                 return
             else:
                 pos_x.append(x)
                 pos_y.append(y)
-        '''
-        x_max=max(pos_x)
-        print(x_max,TABLE_SIZE[0])
-        if x_max>TABLE_SIZE[0]-1:
-            print(x_max-TABLE_SIZE[0]+1)
-            x_plus=TABLE_SIZE[0]-x_max-1
-        else:
-            x_plus=0
-        '''
         if can_move:
             #move
             for block,x,y in zip(self.__block_g,pos_x,pos_y):
@@ -298,7 +286,6 @@ class Main:
             if event_type==pygame.QUIT:
                 self.__running=False
             elif event_type==pygame.KEYDOWN:
-                #print(event.key)
                 if key_unprocessed:
                     key_unprocessed=False
                     if event.key==pygame.K_RIGHT:
@@ -323,10 +310,17 @@ class Main:
                             self.__paused=True
                         elif event.key==pygame.K_r:
                             self.__reset()
-        if pygame.key.get_pressed()[pygame.K_DOWN]:
+        pressed=pygame.key.get_pressed()
+        if pressed[pygame.K_DOWN]:
             self.__spd_multi=SPDMULTI
-        elif pygame.key.get_pressed()[pygame.K_b]:
+            if self.__frame_count==DOWNSPD//self.__spd_multi:
+                self.__point+=.25
+        elif pressed[pygame.K_b]:
             self.__spd_multi=SPDMULTI*2
+            if self.__frame_count==DOWNSPD//self.__spd_multi:
+                self.__point+=.5
+        elif pressed[pygame.K_o]:
+            self.__overed=True
         elif self.__frame_count==0:
             self.__spd_multi=1
         if key_unprocessed:
@@ -356,7 +350,7 @@ class Main:
         display.fill(COLOR['white'])
         pygame.draw.rect(display,COLOR['black'],pygame.Rect(PADDING,PADDING,TABLE_SIZE[0]*BLOCK_SIZE,TABLE_SIZE[1]*BLOCK_SIZE))
         pygame.draw.rect(display,COLOR['black'],pygame.Rect(410,200,4*BLOCK_SIZE,3*BLOCK_SIZE))
-        display.blit(TXTFONT.render(f'{self.__point:03d}',True,COLOR['black']),(450,100))
+        display.blit(TXTFONT.render(f'{int(self.__point):03d}',True,COLOR['black']),(450,100))
         if self.__frame_count>=DOWNSPD//self.__spd_multi and not self.__delay:
             for block in self.__block_g:
                 block.update(spd=[self.__x_spd,1])
@@ -372,8 +366,10 @@ class Main:
     
     def __draw_over(self):
         display.fill(COLOR['white'])
-        display.blit(TXTFONT.render('Game Over',True,COLOR['black']),((SIZE[0]-200)//2,(SIZE[1]-100)//2))
-        display.blit(TXTFONT.render('Press A Key to Restart',True,COLOR['black']),((SIZE[0]-375)//2,(SIZE[1]+50)//2))
+        texts=((f'Score: {int(self.__point):03d}',190,-175),('Game Over',200,-50),('Press A key to Restart',365,75))
+        for text,width,y_plus in texts:
+            text_render=TXTFONT.render(text,True,COLOR['black'])
+            display.blit(text_render,((SIZE[0]-width)//2,(SIZE[1]+y_plus)//2-text_render.get_height()//4))
     
     def __quit(self):
         pygame.display.quit()

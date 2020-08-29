@@ -116,6 +116,7 @@ class Main:
             if not direction&S:
                 self.__delay=0
             self.__event_handler(direction)
+            self.__get_crash(direction)
             self.__draw()
             pygame.display.flip()
             self.__get_crash(direction)
@@ -151,6 +152,7 @@ class Main:
     
     def __get_touched(self,pos=None):
         flag=0
+        pos_fs=tuple(f_block.pos() for f_block in self.__fixed_g)
         for block in (pos if pos else self.__block_g):
             if pos:
                 pos_b=block
@@ -167,8 +169,7 @@ class Main:
             elif pos_b[0]<=0:
                 flag|=W
             #get block touch
-            for f_block in self.__fixed_g:
-                pos_f=f_block.pos()
+            for pos_f in pos_fs:
                 diff_x=pos_b[0]-pos_f[0]
                 diff_y=pos_b[1]-pos_f[1]
                 if not diff_x:
@@ -194,7 +195,7 @@ class Main:
                             flag|=NE
         return flag
     
-    def __get_covered(self,pos=None):
+    def __get_covered(self,pos_fs,pos=None):
         flag=0
         for block in (pos if pos else self.__block_g):
             if pos:
@@ -212,8 +213,7 @@ class Main:
             elif pos_b[0]<0:
                 flag|=W
             #get block touch
-            for f_block in self.__fixed_g:
-                pos_f=f_block.pos()
+            for pos_f in pos_fs:
                 if pos_b==pos_f:
                     flag|=C
         return flag
@@ -240,11 +240,12 @@ class Main:
         pos_x=[]
         pos_y=[]
         can_move=True
+        pos_fs=tuple(f_block.pos() for f_block in self.__fixed_g)
         for block in self.__block_g:
             pos=block.pos()
             x=min_x-min_y+pos[1]           #=(pos[1]-min_y-size[1]-1)+(size[1]+1+min_x)
             y=min_x+min_y-pos[0]+size[0]   #=(min_x-pos[0]-1)        +(size[0]+1+min_y)
-            if self.__get_covered(((x,y),)):
+            if self.__get_covered(pos_fs,([x,y],)):
                 can_move=False
                 return
             else:

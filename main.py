@@ -4,16 +4,16 @@ pygame.font.init()
 #load config
 with open('config.conf','r') as file:
     config=json.load(file)
-COLOR=config['color']
-SHAPE=config['shape']
-TXTFONT=pygame.font.SysFont(config['font'],50)
-SIZE=config['size']
-FPS=config['fps']
-BLOCK_SIZE=config['blocksize']
-TABLE_SIZE=config['tablesize']
-DOWNSPD=60/config['spdfersec']
-SPDMULTI=config['spdmulti']
-PADDING=config['padding']
+COLOR      = config['color']
+SHAPE      = config['shape']
+TXTFONT    = pygame.font.SysFont(config['font'],50)
+SIZE       = config['size']
+FPS        = config['fps']
+BLOCK_SIZE = config['blocksize']
+TABLE_SIZE = config['tablesize']
+DOWNSPD    = 60/config['spdfersec']
+SPDBOOST   = config['spdboost']
+PADDING    = config['padding']
 
 #direction flags
 #   2^:876543210
@@ -31,6 +31,7 @@ C  = 0b100000000
 #Define global variables
 clocker=pygame.time.Clock()
 display=pygame.display.set_mode(SIZE)
+pygame.display.set_caption('Tetris')
 
 
 #Block class
@@ -140,7 +141,7 @@ class Main:
     
     def __get_crash(self,direction):
         if direction&S:
-            if self.__delay==DOWNSPD:
+            if self.__delay>=DOWNSPD:
                 self.__delay=0
                 self.__fixed_g+=self.__block_g
                 self.__block_g=[]
@@ -258,17 +259,14 @@ class Main:
     def __del_line(self):
         rows=[0]*TABLE_SIZE[1]
         #check end&get row count
-        k=0
         for block in self.__fixed_g:
             pos=block.pos()
             if pos[1]<=0:
                 self.__overed=True
                 return
             rows[pos[1]]|=2**pos[0]
-            k+=1
         #delete line if line is fill
-        k=0
-        for row in rows:
+        for k,row in enumerate(rows):
             if row==511:
                 for j in range(len(self.__fixed_g)-1,-1,-1):
                     if self.__fixed_g[j].pos()[1]==k:
@@ -277,7 +275,6 @@ class Main:
                     if block.pos()[1]<k:
                         block.update(spd=[0,1])
                 self.__point+=10
-            k+=1
     
     def __event_handler(self,direction):
         key_unprocessed=True
@@ -312,11 +309,11 @@ class Main:
                             self.__reset()
         pressed=pygame.key.get_pressed()
         if pressed[pygame.K_DOWN]:
-            self.__spd_multi=SPDMULTI
+            self.__spd_multi=SPDBOOST
             if self.__frame_count==DOWNSPD//self.__spd_multi:
                 self.__point+=.25
         elif pressed[pygame.K_b]:
-            self.__spd_multi=SPDMULTI*2
+            self.__spd_multi=SPDBOOST*2
             if self.__frame_count==DOWNSPD//self.__spd_multi:
                 self.__point+=.5
         elif pressed[pygame.K_o]:

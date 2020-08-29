@@ -150,10 +150,11 @@ class Main:
             else:
                 self.__delay+=1
     
-    def __get_touched(self,pos=None):
+    def __get_touched(self,*,pos=None):
         flag=0
+        pos_bs=pos if pos else self.__block_g
         pos_fs=tuple(f_block.pos() for f_block in self.__fixed_g)
-        for block in (pos if pos else self.__block_g):
+        for block in pos_bs:
             if pos:
                 pos_b=block
             else:
@@ -195,7 +196,7 @@ class Main:
                             flag|=NE
         return flag
     
-    def __get_covered(self,pos_fs,pos=None):
+    def __get_covered(self,pos_fs,*,pos=None):
         flag=0
         for block in (pos if pos else self.__block_g):
             if pos:
@@ -243,9 +244,9 @@ class Main:
         pos_fs=tuple(f_block.pos() for f_block in self.__fixed_g)
         for block in self.__block_g:
             pos=block.pos()
-            x=min_x-min_y+pos[1]           #=(pos[1]-min_y-size[1]-1)+(size[1]+1+min_x)
-            y=min_x+min_y-pos[0]+size[0]   #=(min_x-pos[0]-1)        +(size[0]+1+min_y)
-            if self.__get_covered(pos_fs,([x,y],)):
+            x=min_x-min_y+pos[1]         # =(pos[1]-min_y-size[1]-1)+(size[1]+1+min_x)
+            y=min_x+min_y-pos[0]+size[0] # =(min_x-pos[0]-1)        +(size[0]+1+min_y)
+            if self.__get_covered(pos_fs,pos=([x,y],)):
                 can_move=False
                 return
             else:
@@ -254,7 +255,6 @@ class Main:
         if can_move:
             #move
             for block,x,y in zip(self.__block_g,pos_x,pos_y):
-                #block.move([x+x_plus,y])
                 block.move([x,y])
         
     def __del_line(self):

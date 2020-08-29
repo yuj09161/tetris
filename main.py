@@ -57,13 +57,12 @@ class Block:
             self.__size=size
 
         #draw block
-        if not color:
-            color=self.__color
+        if color:
+            self.__color=color
         if self.__pos[1]>=0:
-            pygame.draw.rect(display,color,pygame.Rect((self.__pos[0]*BLOCK_SIZE+PADDING,self.__pos[1]*BLOCK_SIZE+PADDING),self.__size))
+            pygame.draw.rect(display,self.__color,pygame.Rect((self.__pos[0]*BLOCK_SIZE+PADDING,self.__pos[1]*BLOCK_SIZE+PADDING),self.__size))
     
     def move(self,pos):
-        assert len(pos)==2
         self.__pos=pos
     
     def pos(self):
@@ -130,7 +129,7 @@ class Main:
         for k in range(len(block)):
             for j in range(len(block[0])):
                 if block[k][j]:
-                    self.__block_g.append(Block([(j+(9-len(block[0]))//2),k],color))
+                    self.__block_g.append(Block([(j+(TABLE_SIZE[0]-len(block[0]))//2),k],color))
         self.__next_g.clear()
         tmp=SHAPE[random.randint(0,len(SHAPE)-1)]
         self.__next_block=block,color=(tmp[:-1],tmp[-1])
@@ -152,9 +151,8 @@ class Main:
     
     def __get_touched(self,*,pos=None):
         flag=0
-        pos_bs=pos if pos else self.__block_g
         pos_fs=tuple(f_block.pos() for f_block in self.__fixed_g)
-        for block in pos_bs:
+        for block in (pos if pos else self.__block_g):
             if pos:
                 pos_b=block
             else:
@@ -238,24 +236,19 @@ class Main:
                 max_y=pos[1]
         size=(max_x-min_x,max_y-min_y)
         #calculate position
-        pos_x=[]
-        pos_y=[]
-        can_move=True
+        pos_b=[]
         pos_fs=tuple(f_block.pos() for f_block in self.__fixed_g)
         for block in self.__block_g:
             pos=block.pos()
-            x=min_x-min_y+pos[1]         # =(pos[1]-min_y-size[1]-1)+(size[1]+1+min_x)
-            y=min_x+min_y-pos[0]+size[0] # =(min_x-pos[0]-1)        +(size[0]+1+min_y)
+            x=min_x-min_y+pos[1]          # =(pos[1]-min_y-size[1]-1)+(size[1]+1+min_x)
+            y=min_x+min_y-pos[0]+size[0]  # =(min_x-pos[0]-1)        +(size[0]+1+min_y)
             if self.__get_covered(pos_fs,pos=([x,y],)):
-                can_move=False
                 return
             else:
-                pos_x.append(x)
-                pos_y.append(y)
-        if can_move:
-            #move
-            for block,x,y in zip(self.__block_g,pos_x,pos_y):
-                block.move([x,y])
+                pos_b.append([x,y])
+        #move
+        for block,pos in zip(self.__block_g,pos_b):
+            block.move(pos)
         
     def __del_line(self):
         rows=[0]*TABLE_SIZE[1]
@@ -268,7 +261,7 @@ class Main:
             rows[pos[1]]|=2**pos[0]
         #delete line if line is fill
         for k,row in enumerate(rows):
-            if row==511:
+            if row==2**TABLE_SIZE[0]-1:
                 for j in range(len(self.__fixed_g)-1,-1,-1):
                     if self.__fixed_g[j].pos()[1]==k:
                         del(self.__fixed_g[j])
